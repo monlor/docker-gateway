@@ -34,5 +34,8 @@ echo "generate xray config ..."
 echo "starting docker event ..."
 /docker-gateway-manager.sh &
 
+local_ip=$(ip a | grep inet | grep -Ev 'inet6|127.0.0.1' | awk '{print$2}' | cut -d'/' -f1)
+echo "gateway ip: ${local_ip}"
+
 echo "starting xray ..."
 exec xray -config /etc/xray/config.json

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # confirm docker.sock
-if [ ! -f /var/run/docker.sock ]; then
+if [ ! -S /var/run/docker.sock ]; then
     echo "Error: Docker socket not found. Make sure to mount it when running the container."
     exit 0
 fi
