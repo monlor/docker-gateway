@@ -13,15 +13,11 @@ modify_container_gateway() {
     
     echo "Modifying gateway for container $container_id to $gateway_ip"
     
-    # get netns path
-    netns_path=$(docker inspect -f '{{.NetworkSettings.SandboxKey}}' "$container_id")
-    
-    # change default gateway
-    nsenter --net="$netns_path" ip route replace default via "$gateway_ip"
+    nsenter -t $(docker inspect -f '{{.State.Pid}}' "$container_id") -n ip route replace default via "$gateway_ip"
 }
 
 # loop: docker events
-docker events --filter 'type=container' --filter 'event=start' --format '{{.ID}}' | while read -r container_id
+docker events --filter 'type=container' --filter 'event=start' --filter 'event=restart' --format '{{.ID}}' | while read -r container_id
 do
     # get container env
     gateway_ip=$(docker inspect -f '{{range .Config.Env}}{{if eq (index (split . "=") 0) "GATEWAY_IP"}}{{index (split . "=") 1}}{{end}}{{end}}' "$container_id")
