@@ -2,7 +2,7 @@ FROM alpine:latest
 
 COPY --from=teddysun/xray:1.8.21 /usr/bin/xray /usr/bin
 
-RUN apk add --no-cache ca-certificates tzdata curl iptables iptables-legacy ip6tables bash jq
+RUN apk add --no-cache ca-certificates tzdata curl iptables iptables-legacy ip6tables bash jq docker-cli
 ENV TZ=Asia/Shanghai
 
 WORKDIR /etc/xray
