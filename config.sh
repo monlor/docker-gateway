@@ -10,19 +10,24 @@ cat > /etc/xray/config.json <<EOF
     "loglevel": "${LOG_LEVEL}"
   },
   "routing": {
-    "domainStrategy": "IPIfNonMatch",
+    "domainStrategy": "AsIs",
     "rules": [
-      {
-        "type": "field",
-        "ip": ["8.8.8.8", "1.1.1.1"],
-        "outboundTag": "direct"
-      },
       {
         "type": "field",
         "inboundTag": ["all-in"],
         "port": 53,
         "network": "udp",
         "outboundTag": "dns-out"
+      },
+      { 
+        "type": "field", 
+        "ip": [ "8.8.8.8", "1.1.1.1" ] , 
+        "outboundTag": "${NON_CN_DNS_OUT:-direct}" 
+      },
+			{ 
+        "type": "field", 
+        "ip": [ "119.29.29.29", "223.5.5.5" ], 
+        "outboundTag": "${CN_DNS_OUT:-direct}" 
       },
       {
         "type": "field",
@@ -32,7 +37,7 @@ cat > /etc/xray/config.json <<EOF
       {
         "type": "field",
         "network": "udp,tcp",
-        "outboundTag": "direct"
+        "outboundTag": "${DEFAULT_OUT:-direct}"
       }
     ]
   },
@@ -85,7 +90,7 @@ cat > /etc/xray/config.json <<EOF
       "tag": "dns-out",
       "protocol": "dns",
       "settings": {
-        "address": "8.8.8.8"
+        "domainStrategy": "UseIP"
       },
       "streamSettings": {
         "sockopt": {
@@ -118,8 +123,7 @@ cat > /etc/xray/config.json <<EOF
         "expectIPs": ["geoip:cn"]
       },
       "8.8.8.8",
-      "1.1.1.1",
-      "https+local://doh.dns.sb/dns-query"
+      "1.1.1.1"
     ]
   }
 }
