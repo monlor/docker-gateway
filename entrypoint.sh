@@ -12,11 +12,9 @@ alias iptables=iptables-legacy
 
 # transparent
 iptables -t mangle -N XRAY
-iptables -t mangle -A XRAY -d 127.0.0.1/32 -j RETURN
+iptables -t mangle -A XRAY -d 127.0.0.1/24 -j RETURN
 iptables -t mangle -A XRAY -d 224.0.0.0/4 -j RETURN 
 iptables -t mangle -A XRAY -d 255.255.255.255/32 -j RETURN
-iptables -t mangle -A XRAY -d 127.0.0.11/32 -p tcp -j RETURN 
-iptables -t mangle -A XRAY -d 127.0.0.53/32 -p tcp -j RETURN  
 iptables -t mangle -A XRAY -d ${LAN_SEGMENT:-172.100.0.0/24} -p tcp -j RETURN 
 iptables -t mangle -A XRAY -d ${LAN_SEGMENT:-172.100.0.0/24} -p udp ! --dport 53 -j RETURN 
 iptables -t mangle -A XRAY -j RETURN -m mark --mark 0xff   
@@ -25,10 +23,9 @@ iptables -t mangle -A XRAY -p tcp -j TPROXY --on-ip 127.0.0.1 --on-port ${PORT:-
 iptables -t mangle -A PREROUTING -j XRAY 
 
 iptables -t mangle -N XRAY_MASK 
+iptables -t mangle -A XRAY_MASK -d 127.0.0.1/24 -j RETURN
 iptables -t mangle -A XRAY_MASK -d 224.0.0.0/4 -j RETURN 
 iptables -t mangle -A XRAY_MASK -d 255.255.255.255/32 -j RETURN 
-iptables -t mangle -A XRAY_MASK -d 127.0.0.11/32 -p tcp -j RETURN 
-iptables -t mangle -A XRAY_MASK -d 127.0.0.53/32 -p tcp -j RETURN 
 iptables -t mangle -A XRAY_MASK -d ${LAN_SEGMENT:-172.100.0.0/24} -p tcp -j RETURN
 iptables -t mangle -A XRAY_MASK -d ${LAN_SEGMENT:-172.100.0.0/24} -p udp ! --dport 53 -j RETURN 
 iptables -t mangle -A XRAY_MASK -j RETURN -m mark --mark 0xff  
