@@ -44,7 +44,7 @@ docker run -d \
 
 `RULE_TAG_*`: List of LAN IP addresses for the network egress to outbound tag *
 
-`OUTBOUND_SERVER_*`: List of egress proxy servers with tag *, format: protocol,ip:port:user:(pass/security)[:alterId],... Supported protocols: ss/http/socks/vmess
+`OUTBOUND_SERVER_*`: List of egress proxy servers with tag *, format: `protocol,ip:port:user:(pass/security)[:alterId],...`, Supported protocols: ss/http/socks/vmess
 
 `NON_CN_DNS_OUT`: Non-Chinese dns server outbound (default direct)
 

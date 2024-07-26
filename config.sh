@@ -230,7 +230,7 @@ for var in $(env | grep ^OUTBOUND_SERVER_); do
     \"tag\": \"$tag\",
     \"protocol\": \"$protocol\",
     \"settings\": {
-      \"servers\": $(IFS=,; echo "[${server_array[*]}]")
+      \"${outbound_type}\": $(IFS=,; echo "[${server_array[*]}]")
     },
     \"streamSettings\": {
       \"sockopt\": {

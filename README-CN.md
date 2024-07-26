@@ -2,7 +2,7 @@
 
 [English](/README.md) | **简体中文**
 
-docker-gateway 项目在 Docker 之上实现了一个代理服务器网关。主要目标是为不同的容器分配不同的代理节点。其底层原理是启动一个透明代理网关服务, 将同一虚拟网络接口下其他容器的默认网关重定向到网关服务。它还使用 Xray 实现流量分流。
+docker-gateway 项目在 Docker 之上实现了一个代理服务器网关。主要目标是为不同的容器分配不同的代理节点。其底层原理是启动一个透明代理网关服务, 将同一虚拟网络接口下其他容器的默认网关重定向到网关服务，使用 Xray 实现流量分流。
 
 ## 安装
 
@@ -44,7 +44,7 @@ docker run -d \
 
 `RULE_TAG_*`: 网络出口到出站标签为 * 的 LAN IP 地址列表
 
-`OUTBOUND_SERVER_*`: 带有标签 * 的出站代理服务器列表, 格式: 协议,ip:port:user:(pass/security)[:alterId],... 支持的协议: ss/http/socks/vmess
+`OUTBOUND_SERVER_*`: 创建标签 * 的出站代理服务器列表, 格式: `协议,ip:port:user:(pass/security)[:alterId],...`, 支持的协议: ss/http/socks/vmess
 
 `NON_CN_DNS_OUT`: 非中国 DNS 服务器出站(默认直连)
 
