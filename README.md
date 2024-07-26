@@ -48,6 +48,8 @@ docker run -d \
 
 `OUTBOUND_SERVER_*`: List of egress proxy servers with tag *, format: `protocol,ip:port:(user|method):pass,...`, Supported protocols: shadowsocks/http/socks
 
+`PROXY_SERVER_TO_IP`: Resolve the proxy server domain as IP (default true)
+
 `NON_CN_DNS_OUT`: Non-Chinese dns server outbound tag (default direct)
 
 `CN_DNS_OUT`: Chinese dns server outbound tag (default direct)

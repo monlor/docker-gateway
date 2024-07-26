@@ -48,6 +48,8 @@ docker run -d \
 
 `OUTBOUND_SERVER_*`: 创建标签 * 的出站代理服务器列表, 格式: `协议,ip:port:(user|method):pass,...`, 支持的协议: shadowsocks/http/socks
 
+`PROXY_SERVER_TO_IP`: 解析代理服务器域名为ip (默认 true)
+
 `NON_CN_DNS_OUT`: 非中国 DNS 服务器出站tag (默认 direct)
 
 `CN_DNS_OUT`: 中国 DNS 服务器出站tag (默认 direct)

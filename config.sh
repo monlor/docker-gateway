@@ -182,7 +182,7 @@ for var in $(env | grep ^RULE_TAG_); do
   if [ -n "${RULE_DOMAIN:-}" ]; then
     rule_domains=", \"domain\": [\"$(echo "${RULE_DOMAIN:-}" | sed -e 's/,/","/g')\"]"
   fi
-  jq ".routing.rules = [{\"type\": \"field\", \"source\": $ip_array ${rule_domains}, \"outboundTag\": \"$tag\"}] + .routing.rules" /etc/xray/config.json > /tmp/config.json.tmp && mv /tmp/config.json.tmp /etc/xray/config.json
+  jq ".routing.rules = [{\"type\": \"field\", \"source\": $ip_array ${rule_domains}, \"outboundTag\": \"$tag\"}, {\"type\": \"field\", \"source\": $ip_array, \"ip\": [ \"8.8.8.8\", \"1.1.1.1\" ], \"outboundTag\": \"$tag\"}] + .routing.rules" /etc/xray/config.json > /tmp/config.json.tmp && mv /tmp/config.json.tmp /etc/xray/config.json
 done
 
 # parse OUTBOUND_SERVER_*
@@ -218,6 +218,21 @@ for var in $(env | grep ^OUTBOUND_SERVER_); do
     if ! [[ "$port" =~ ^[0-9]+$ ]]; then
       echo "Error: port '$port' is not a valid number."
       continue
+    fi
+
+    # resolve domain to ip
+    if [ "${PROXY_SERVER_TO_IP:-true}" = "true" ]; then
+      if [[ "$address" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo "$address is a ip address"
+      else
+        ip=$(ping -4 -c 1 "$address" | awk -F'[()]' '/PING/ {print $2}')
+        if [ -n "$ip" ]; then
+            echo "nslookup $address to $ip"
+            address=${ip}
+        else
+            echo "can't resolve: $address"
+        fi
+      fi
     fi
     
     if [[ "$protocol" == "http" || "$protocol" == "socks" ]]; then
@@ -258,4 +273,5 @@ for var in $(env | grep ^OUTBOUND_SERVER_); do
       }
     }
   }]" /etc/xray/config.json > /tmp/config.json.tmp && mv /tmp/config.json.tmp /etc/xray/config.json
+
 done
