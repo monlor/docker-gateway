@@ -129,10 +129,10 @@ cat > /etc/xray/config.json <<EOF
 }
 EOF
 
-if ! (env | grep ^RULE_TAG_ &> /dev/null) then
-  echo "can't found env RULE_TAG_*!"
-  exit 1
-fi
+# if ! (env | grep ^RULE_TAG_ &> /dev/null) then
+#   echo "can't found env RULE_TAG_*!"
+#   exit 1
+# fi
 # parse RULE_TAG_*
 for var in $(env | grep ^RULE_TAG_); do
   tag=${var%%=*}
@@ -146,10 +146,10 @@ for var in $(env | grep ^RULE_TAG_); do
   jq ".routing.rules = [{\"type\": \"field\", \"source\": $ip_array, \"domain\": [\"geosite:geolocation-!cn\"], \"outboundTag\": \"$tag\"}] + .routing.rules" /etc/xray/config.json > /tmp/config.json.tmp && mv /tmp/config.json.tmp /etc/xray/config.json
 done
 
-if ! (env | grep ^OUTBOUND_SERVER_ &> /dev/null) then
-  echo "can't found env OUTBOUND_SERVER_*!"
-  exit 1
-fi
+# if ! (env | grep ^OUTBOUND_SERVER_ &> /dev/null) then
+#   echo "can't found env OUTBOUND_SERVER_*!"
+#   exit 1
+# fi
 # parse OUTBOUND_SERVER_*
 for var in $(env | grep ^OUTBOUND_SERVER_); do
   tag=${var%%=*}
@@ -163,6 +163,8 @@ for var in $(env | grep ^OUTBOUND_SERVER_); do
   IFS=',' read -ra SERVER_LIST <<< "$servers"
   
   server_array=()
+
+  outbound_type="servers"
   
   for server in "${SERVER_LIST[@]}"; do
     IFS=':' read -ra SERVER_INFO <<< "$server"
@@ -193,9 +195,10 @@ for var in $(env | grep ^OUTBOUND_SERVER_); do
         }]
       }")
     elif [[ "$protocol" == "vmess" ]]; then
+      outbound_type="vnext"
       # get alterId and security
+      security=${pass:-auto} # default auto
       alterId=${SERVER_INFO[4]:-64}  # default 64
-      security=${SERVER_INFO[5]:-auto}  # default auto
 
       server_array+=("{
         \"address\": \"$address\",
