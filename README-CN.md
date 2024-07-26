@@ -44,13 +44,17 @@ docker run -d \
 
 `RULE_TAG_*`: 网络出口到出站标签为 * 的 LAN IP 地址列表
 
-`OUTBOUND_SERVER_*`: 创建标签 * 的出站代理服务器列表, 格式: `协议,ip:port:user:(pass/security)[:alterId],...`, 支持的协议: ss/http/socks/vmess
+`RULE_DOMAIN`: 走代理的域名列表 (默认 geosite:geolocation-!cn)
 
-`NON_CN_DNS_OUT`: 非中国 DNS 服务器出站(默认直连)
+`OUTBOUND_SERVER_*`: 创建标签 * 的出站代理服务器列表, 格式: `协议,ip:port:(user|method):pass,...`, 支持的协议: shadowsocks/http/socks
 
-`CN_DNS_OUT`: 中国 DNS 服务器出站(默认直连)
+`NON_CN_DNS_OUT`: 非中国 DNS 服务器出站tag (默认 direct)
 
-`DEFAULT_OUT`: 默认出站
+`CN_DNS_OUT`: 中国 DNS 服务器出站tag (默认 direct)
+
+`CN_OUT`: 中国IP和域名出站tag (默认 direct)
+
+`DEFAULT_OUT`: 默认出站tag
 
 `LAN_SEGMENT`: LAN 网络段(默认 172.100.0.0/24)
 

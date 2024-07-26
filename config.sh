@@ -10,7 +10,8 @@ cat > /etc/xray/config.json <<EOF
     "loglevel": "${LOG_LEVEL}"
   },
   "routing": {
-    "domainStrategy": "AsIs",
+    "domainMatcher": "mph",
+    "domainStrategy": "IPIfNonMatch",
     "rules": [
       {
         "type": "field",
@@ -31,8 +32,35 @@ cat > /etc/xray/config.json <<EOF
       },
       {
         "type": "field",
+        "domain": [ "geosite:geolocation-cn" ],
+        "outboundTag": "${CN_OUT:-direct}"
+      },
+      {
+        "type": "field",
+        "ip": [ "geoip:cn" ],
+        "outboundTag": "${CN_OUT:-direct}"
+      },
+      {
+        "type": "field",
+        "ip": [ "geoip:private" ],
+        "outboundTag": "direct"
+      },
+      {
+        "type": "field",
+        "protocol": ["bittorrent"],
+        "outboundTag": "direct"
+      },
+      {
+        "type": "field",
+        "inboundTag": ["all-in"],
+        "port": 123,
+        "network": "udp",
+        "outboundTag": "direct"
+      },
+      {
+        "type": "field",
         "domain": ["geosite:category-ads-all"],
-        "outboundTag": "block"
+        "outboundTag": "${ADS_ALL_OUT:-block}"
       },
       {
         "type": "field",
@@ -109,7 +137,12 @@ cat > /etc/xray/config.json <<EOF
     }
   ],
   "dns": {
+    "hosts": {
+      "domain:googleapis.cn": "googleapis.com",
+      "dns.google": "8.8.8.8"
+    },
     "servers": [
+      "https://1.1.1.1/dns-query",
       {
         "address": "119.29.29.29",
         "port": 53,
@@ -122,17 +155,15 @@ cat > /etc/xray/config.json <<EOF
         "domains": ["geosite:cn"],
         "expectIPs": ["geoip:cn"]
       },
+      "https://dns.google/dns-query",
       "8.8.8.8",
-      "1.1.1.1"
+      "1.1.1.1",
+      "localhost"
     ]
   }
 }
 EOF
 
-# if ! (env | grep ^RULE_TAG_ &> /dev/null) then
-#   echo "can't found env RULE_TAG_*!"
-#   exit 1
-# fi
 # parse RULE_TAG_*
 for var in $(env | grep ^RULE_TAG_); do
   tag=${var%%=*}
@@ -143,13 +174,10 @@ for var in $(env | grep ^RULE_TAG_); do
   ip_array=$(echo $ips | sed 's/,/","/g; s/^/["/; s/$/"]/')
   
   # update rules
-  jq ".routing.rules = [{\"type\": \"field\", \"source\": $ip_array, \"domain\": [\"geosite:geolocation-!cn\"], \"outboundTag\": \"$tag\"}] + .routing.rules" /etc/xray/config.json > /tmp/config.json.tmp && mv /tmp/config.json.tmp /etc/xray/config.json
+  rule_domains=$(echo "${RULE_DOMAIN:-geosite:geolocation-!cn}" | sed -e 's/,/","/g')
+  jq ".routing.rules = [{\"type\": \"field\", \"source\": $ip_array, \"domain\": [\"${rule_domains}\"], \"outboundTag\": \"$tag\"}] + .routing.rules" /etc/xray/config.json > /tmp/config.json.tmp && mv /tmp/config.json.tmp /etc/xray/config.json
 done
 
-# if ! (env | grep ^OUTBOUND_SERVER_ &> /dev/null) then
-#   echo "can't found env OUTBOUND_SERVER_*!"
-#   exit 1
-# fi
 # parse OUTBOUND_SERVER_*
 for var in $(env | grep ^OUTBOUND_SERVER_); do
   tag=${var%%=*}
@@ -194,22 +222,7 @@ for var in $(env | grep ^OUTBOUND_SERVER_); do
           \"pass\": \"$pass\"
         }]
       }")
-    elif [[ "$protocol" == "vmess" ]]; then
-      outbound_type="vnext"
-      # get alterId and security
-      security=${pass:-auto} # default auto
-      alterId=${SERVER_INFO[4]:-64}  # default 64
-
-      server_array+=("{
-        \"address\": \"$address\",
-        \"port\": $port,
-        \"users\": [{
-          \"id\": \"$user\",
-          \"alterId\": $alterId,
-          \"security\": \"$security\"
-        }]
-      }")
-    elif [[ "$protocol" == "ss" ]]; then
+    elif [[ "$protocol" == "shadowsocks" ]]; then
       server_array+=("{
         \"address\": \"$address\",
         \"port\": $port,
