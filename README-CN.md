@@ -38,13 +38,13 @@ docker run -d \
 
 ## 环境变量
 
-`PORT`: 透明端口
+`PORT`: 透明代理端口
 
 `SOCKS_PORT`: 入站 Socks 端口
 
 `RULE_TAG_*`: 网络出口到出站标签为 * 的 LAN IP 地址列表
 
-`RULE_DOMAIN`: 走代理的域名列表 (默认 geosite:geolocation-!cn)
+`RULE_DOMAIN`: 默认走代理的域名列表 (默认 空)
 
 `OUTBOUND_SERVER_*`: 创建标签 * 的出站代理服务器列表, 格式: `协议,ip:port:(user|method):pass,...`, 支持的协议: shadowsocks/http/socks
 

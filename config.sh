@@ -174,7 +174,8 @@ for var in $(env | grep ^RULE_TAG_); do
   ip_array=$(echo $ips | sed 's/,/","/g; s/^/["/; s/$/"]/')
   
   # update rules
-  rule_domains=$(echo "${RULE_DOMAIN:-geosite:geolocation-!cn}" | sed -e 's/,/","/g')
+  # geosite:geolocation-!cn
+  rule_domains=$(echo "${RULE_DOMAIN:-}" | sed -e 's/,/","/g')
   jq ".routing.rules = [{\"type\": \"field\", \"source\": $ip_array, \"domain\": [\"${rule_domains}\"], \"outboundTag\": \"$tag\"}] + .routing.rules" /etc/xray/config.json > /tmp/config.json.tmp && mv /tmp/config.json.tmp /etc/xray/config.json
 done
 
@@ -214,14 +215,13 @@ for var in $(env | grep ^OUTBOUND_SERVER_); do
     fi
     
     if [[ "$protocol" == "http" || "$protocol" == "socks" ]]; then
-      server_array+=("{
-        \"address\": \"$address\",
-        \"port\": $port,
-        \"users\": [{
-          \"user\": \"$user\",
-          \"pass\": \"$pass\"
-        }]
-      }")
+      json_object="{ \"address\": \"$address\", \"port\": $port"
+      if [ -n "$user" ] && [ -n "$pass" ]; then
+          json_object+=", \"users\": [{ \"user\": \"$user\", \"pass\": \"$pass\" }] }"
+      else
+          json_object+=" }"
+      fi
+      server_array=("$json_object")
     elif [[ "$protocol" == "shadowsocks" ]]; then
       server_array+=("{
         \"address\": \"$address\",

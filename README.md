@@ -38,13 +38,13 @@ docker run -d \
 
 ## Evironment
 
-`PORT`: transparent port
+`PORT`: transparent proxy port
 
 `SOCKS_PORT`: inbound socks port
 
 `RULE_TAG_*`: List of LAN IP addresses for the network egress to outbound tag *
 
-`RULE_DOMAIN`: Default proxy domain list (default geosite:geolocation-!cn)
+`RULE_DOMAIN`: Default proxy domain list (default none)
 
 `OUTBOUND_SERVER_*`: List of egress proxy servers with tag *, format: `protocol,ip:port:(user|method):pass,...`, Supported protocols: shadowsocks/http/socks
 
