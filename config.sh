@@ -15,7 +15,7 @@ cat > /etc/xray/config.json <<EOF
     "rules": [
       {
         "type": "field",
-        "inboundTag": ["all-in"],
+        "inboundTag": ["all-in", "socks-in"],
         "port": 53,
         "network": "udp",
         "outboundTag": "dns-out"
@@ -52,7 +52,7 @@ cat > /etc/xray/config.json <<EOF
       },
       {
         "type": "field",
-        "inboundTag": ["all-in"],
+        "inboundTag": ["all-in", "socks-in"],
         "port": 123,
         "network": "udp",
         "outboundTag": "direct"
@@ -80,7 +80,8 @@ cat > /etc/xray/config.json <<EOF
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls"]
+        "destOverride": ["http", "tls", "quic"],
+        "routeOnly": false
       },
       "streamSettings": {
         "sockopt": {
@@ -90,6 +91,7 @@ cat > /etc/xray/config.json <<EOF
       }
     },
     {
+      "tag": "socks-in",
       "port": ${SOCKS_PORT:-1080},
       "protocol": "socks",
       "sniffing": {
@@ -157,9 +159,10 @@ cat > /etc/xray/config.json <<EOF
       },
       "https://dns.google/dns-query",
       "8.8.8.8",
-      "1.1.1.1",
-      "localhost"
-    ]
+      "1.1.1.1"
+    ],
+    "queryStrategy": "UseIP",
+    "tag": "dns_inbound"
   }
 }
 EOF
@@ -175,8 +178,11 @@ for var in $(env | grep ^RULE_TAG_); do
   
   # update rules
   # geosite:geolocation-!cn
-  rule_domains=$(echo "${RULE_DOMAIN:-}" | sed -e 's/,/","/g')
-  jq ".routing.rules = [{\"type\": \"field\", \"source\": $ip_array, \"domain\": [\"${rule_domains}\"], \"outboundTag\": \"$tag\"}] + .routing.rules" /etc/xray/config.json > /tmp/config.json.tmp && mv /tmp/config.json.tmp /etc/xray/config.json
+  rule_domains=""
+  if [ -n "${RULE_DOMAIN:-}" ]; then
+    rule_domains=", \"domain\": [\"$(echo "${RULE_DOMAIN:-}" | sed -e 's/,/","/g')\"]"
+  fi
+  jq ".routing.rules = [{\"type\": \"field\", \"source\": $ip_array ${rule_domains}, \"outboundTag\": \"$tag\"}] + .routing.rules" /etc/xray/config.json > /tmp/config.json.tmp && mv /tmp/config.json.tmp /etc/xray/config.json
 done
 
 # parse OUTBOUND_SERVER_*
@@ -246,6 +252,7 @@ for var in $(env | grep ^OUTBOUND_SERVER_); do
       \"${outbound_type}\": $(IFS=,; echo "[${server_array[*]}]")
     },
     \"streamSettings\": {
+      \"domainStrategy\": \"AsIs\",
       \"sockopt\": {
         \"mark\": 255
       }
