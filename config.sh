@@ -182,7 +182,7 @@ for var in $(env | grep ^RULE_TAG_); do
   if [ -n "${RULE_DOMAIN:-}" ]; then
     rule_domains=", \"domain\": [\"$(echo "${RULE_DOMAIN:-}" | sed -e 's/,/","/g')\"]"
   fi
-  jq ".routing.rules = [{\"type\": \"field\", \"source\": $ip_array ${rule_domains}, \"outboundTag\": \"$tag\"}, {\"type\": \"field\", \"source\": $ip_array, \"ip\": [ \"8.8.8.8\", \"1.1.1.1\" ], \"outboundTag\": \"$tag\"}] + .routing.rules" /etc/xray/config.json > /tmp/config.json.tmp && mv /tmp/config.json.tmp /etc/xray/config.json
+  jq ".routing.rules = [{\"type\": \"field\", \"source\": $ip_array ${rule_domains}, \"outboundTag\": \"$tag\"}] + .routing.rules" /etc/xray/config.json > /tmp/config.json.tmp && mv /tmp/config.json.tmp /etc/xray/config.json
 done
 
 # parse OUTBOUND_SERVER_*
