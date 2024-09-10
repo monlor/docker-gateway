@@ -7,36 +7,35 @@ echo "generate iptables rules ..."
 ip rule add fwmark 1 table 100 
 ip route add local 0.0.0.0/0 dev lo table 100
 
-# alias iptables-legacy
-alias iptables=iptables-legacy
+IPTABLES=${IPTABLES_COMMAND:-iptables-legacy}
 
 # transparent
-iptables -t mangle -N XRAY
-iptables -t mangle -A XRAY -d 127.0.0.1/24 -j RETURN
-iptables -t mangle -A XRAY -d 224.0.0.0/4 -j RETURN 
-iptables -t mangle -A XRAY -d 255.255.255.255/32 -j RETURN
-iptables -t mangle -A XRAY -d ${LAN_SEGMENT:-172.100.0.0/24} -p tcp -j RETURN 
-iptables -t mangle -A XRAY -d ${LAN_SEGMENT:-172.100.0.0/24} -p udp ! --dport 53 -j RETURN 
-iptables -t mangle -A XRAY -j RETURN -m mark --mark 0xff   
-iptables -t mangle -A XRAY -p udp -j TPROXY --on-ip 127.0.0.1 --on-port ${PORT:-12345} --tproxy-mark 1 
-iptables -t mangle -A XRAY -p tcp -j TPROXY --on-ip 127.0.0.1 --on-port ${PORT:-12345} --tproxy-mark 1 
-iptables -t mangle -A PREROUTING -j XRAY 
+${IPTABLES} -t mangle -N XRAY
+${IPTABLES} -t mangle -A XRAY -d 127.0.0.1/24 -j RETURN
+${IPTABLES} -t mangle -A XRAY -d 224.0.0.0/4 -j RETURN 
+${IPTABLES} -t mangle -A XRAY -d 255.255.255.255/32 -j RETURN
+${IPTABLES} -t mangle -A XRAY -d ${LAN_SEGMENT:-172.100.0.0/24} -p tcp -j RETURN 
+${IPTABLES} -t mangle -A XRAY -d ${LAN_SEGMENT:-172.100.0.0/24} -p udp ! --dport 53 -j RETURN 
+${IPTABLES} -t mangle -A XRAY -j RETURN -m mark --mark 0xff   
+${IPTABLES} -t mangle -A XRAY -p udp -j TPROXY --on-ip 127.0.0.1 --on-port ${PORT:-12345} --tproxy-mark 1 
+${IPTABLES} -t mangle -A XRAY -p tcp -j TPROXY --on-ip 127.0.0.1 --on-port ${PORT:-12345} --tproxy-mark 1 
+${IPTABLES} -t mangle -A PREROUTING -j XRAY 
 
-iptables -t mangle -N XRAY_MASK 
-iptables -t mangle -A XRAY_MASK -d 127.0.0.1/24 -j RETURN
-iptables -t mangle -A XRAY_MASK -d 224.0.0.0/4 -j RETURN 
-iptables -t mangle -A XRAY_MASK -d 255.255.255.255/32 -j RETURN 
-iptables -t mangle -A XRAY_MASK -d ${LAN_SEGMENT:-172.100.0.0/24} -p tcp -j RETURN
-iptables -t mangle -A XRAY_MASK -d ${LAN_SEGMENT:-172.100.0.0/24} -p udp ! --dport 53 -j RETURN 
-iptables -t mangle -A XRAY_MASK -j RETURN -m mark --mark 0xff  
-iptables -t mangle -A XRAY_MASK -p udp -j MARK --set-mark 1  
-iptables -t mangle -A XRAY_MASK -p tcp -j MARK --set-mark 1  
-iptables -t mangle -A OUTPUT -j XRAY_MASK 
+${IPTABLES} -t mangle -N XRAY_MASK 
+${IPTABLES} -t mangle -A XRAY_MASK -d 127.0.0.1/24 -j RETURN
+${IPTABLES} -t mangle -A XRAY_MASK -d 224.0.0.0/4 -j RETURN 
+${IPTABLES} -t mangle -A XRAY_MASK -d 255.255.255.255/32 -j RETURN 
+${IPTABLES} -t mangle -A XRAY_MASK -d ${LAN_SEGMENT:-172.100.0.0/24} -p tcp -j RETURN
+${IPTABLES} -t mangle -A XRAY_MASK -d ${LAN_SEGMENT:-172.100.0.0/24} -p udp ! --dport 53 -j RETURN 
+${IPTABLES} -t mangle -A XRAY_MASK -j RETURN -m mark --mark 0xff  
+${IPTABLES} -t mangle -A XRAY_MASK -p udp -j MARK --set-mark 1  
+${IPTABLES} -t mangle -A XRAY_MASK -p tcp -j MARK --set-mark 1  
+${IPTABLES} -t mangle -A OUTPUT -j XRAY_MASK 
 
-iptables -t mangle -N DIVERT
-iptables -t mangle -A DIVERT -j MARK --set-mark 1
-iptables -t mangle -A DIVERT -j ACCEPT
-iptables -t mangle -I PREROUTING -p tcp -m socket -j DIVERT
+${IPTABLES} -t mangle -N DIVERT
+${IPTABLES} -t mangle -A DIVERT -j MARK --set-mark 1
+${IPTABLES} -t mangle -A DIVERT -j ACCEPT
+${IPTABLES} -t mangle -I PREROUTING -p tcp -m socket -j DIVERT
 
 echo "generate xray config ..."
 /config.sh
