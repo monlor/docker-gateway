@@ -44,9 +44,9 @@ docker run -d \
 
 `RULE_TAG_*`: 网络出口到出站标签为 * 的 LAN IP 地址列表
 
-`RULE_DOMAIN`: 默认走代理的域名列表 (默认 空)
-
 `OUTBOUND_SERVER_*`: 创建标签 * 的出站代理服务器列表, 格式: `协议,ip:port:(user|method):pass,...`, 支持的协议: shadowsocks/http/socks
+
+`RULE_DOMAIN`: 默认走代理的域名列表 (默认 空)
 
 `PROXY_SERVER_TO_IP`: 解析代理服务器域名为ip (默认 true)
 
@@ -59,6 +59,15 @@ docker run -d \
 `DEFAULT_OUT`: 默认出站tag
 
 `LAN_SEGMENT`: LAN 网络段(默认 172.100.0.0/24)
+
+## 规则示例
+
+* 添加HK的socks5代理，让局域网ip为172.100.0.10的容器走HK代理
+
+```
+RULE_TAG_HK=172.100.0.10/32
+OUTBOUND_SERVER_HK=socks,1.1.1.1:2222:user:pass
+```
 
 ## 赞助
 

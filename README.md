@@ -44,9 +44,9 @@ docker run -d \
 
 `RULE_TAG_*`: List of LAN IP addresses for the network egress to outbound tag *
 
-`RULE_DOMAIN`: Default proxy domain list (default none)
-
 `OUTBOUND_SERVER_*`: List of egress proxy servers with tag *, format: `protocol,ip:port:(user|method):pass,...`, Supported protocols: shadowsocks/http/socks
+
+`RULE_DOMAIN`: Default proxy domain list (default none)
 
 `PROXY_SERVER_TO_IP`: Resolve the proxy server domain as IP (default true)
 
@@ -59,6 +59,15 @@ docker run -d \
 `DEFAULT_OUT`: default outbound
 
 `LAN_SEGMENT`: lan network segment (default 172.100.0.0/24)
+
+## Rule example
+
+* Add HK's socks5 proxy so that containers with LAN ip 172.100.0.10 go through the HK proxy
+
+```
+RULE_TAG_HK=172.100.0.10/32
+OUTBOUND_SERVER_HK=socks,1.1.1.1:2222:user:pass
+```
 
 ## Sponsorship
 
