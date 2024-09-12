@@ -18,7 +18,7 @@ cat > /etc/xray/config.json <<EOF
         "inboundTag": ["all-in", "socks-in"],
         "port": 53,
         "network": "udp",
-        "outboundTag": "dns-out"
+        "outboundTag": "${DEFAULT_DNS_OUT:-direct}"
       },
       { 
         "type": "field", 
@@ -61,11 +61,6 @@ cat > /etc/xray/config.json <<EOF
         "type": "field",
         "domain": ["geosite:category-ads-all"],
         "outboundTag": "${ADS_ALL_OUT:-block}"
-      },
-      {
-        "type": "field",
-        "network": "udp,tcp",
-        "outboundTag": "${DEFAULT_OUT:-direct}"
       }
     ]
   },
@@ -182,8 +177,11 @@ for var in $(env | grep ^RULE_TAG_); do
   if [ -n "${RULE_DOMAIN:-}" ]; then
     rule_domains=", \"domain\": [\"$(echo "${RULE_DOMAIN:-}" | sed -e 's/,/","/g')\"]"
   fi
-  jq ".routing.rules = [{\"type\": \"field\", \"source\": $ip_array ${rule_domains}, \"outboundTag\": \"$tag\"}] + .routing.rules" /etc/xray/config.json > /tmp/config.json.tmp && mv /tmp/config.json.tmp /etc/xray/config.json
+  jq ".routing.rules = .routing.rules + [{\"type\": \"field\", \"source\": $ip_array ${rule_domains}, \"outboundTag\": \"$tag\"}]" /etc/xray/config.json > /tmp/config.json.tmp && mv /tmp/config.json.tmp /etc/xray/config.json
 done
+
+# default rules
+jq ".routing.rules = .routing.rules + [{\"type\": \"field\", \"network\": \"udp,tcp\", \"outboundTag\": \"${DEFAULT_OUT:-direct}\"}]" /etc/xray/config.json > /tmp/config.json.tmp && mv /tmp/config.json.tmp /etc/xray/config.json
 
 # parse OUTBOUND_SERVER_*
 for var in $(env | grep ^OUTBOUND_SERVER_); do

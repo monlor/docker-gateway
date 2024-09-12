@@ -21,16 +21,18 @@ ${IPTABLES} -t mangle -A XRAY -p udp -j TPROXY --on-ip 127.0.0.1 --on-port ${POR
 ${IPTABLES} -t mangle -A XRAY -p tcp -j TPROXY --on-ip 127.0.0.1 --on-port ${PORT:-12345} --tproxy-mark 1 
 ${IPTABLES} -t mangle -A PREROUTING -j XRAY 
 
-${IPTABLES} -t mangle -N XRAY_MASK 
-${IPTABLES} -t mangle -A XRAY_MASK -d 127.0.0.1/24 -j RETURN
-${IPTABLES} -t mangle -A XRAY_MASK -d 224.0.0.0/4 -j RETURN 
-${IPTABLES} -t mangle -A XRAY_MASK -d 255.255.255.255/32 -j RETURN 
-${IPTABLES} -t mangle -A XRAY_MASK -d ${LAN_SEGMENT:-172.100.0.0/24} -p tcp -j RETURN
-${IPTABLES} -t mangle -A XRAY_MASK -d ${LAN_SEGMENT:-172.100.0.0/24} -p udp ! --dport 53 -j RETURN 
-${IPTABLES} -t mangle -A XRAY_MASK -j RETURN -m mark --mark 0xff  
-${IPTABLES} -t mangle -A XRAY_MASK -p udp -j MARK --set-mark 1  
-${IPTABLES} -t mangle -A XRAY_MASK -p tcp -j MARK --set-mark 1  
-${IPTABLES} -t mangle -A OUTPUT -j XRAY_MASK 
+if [ "${LOCAL_PROXY_ENABLED:-false}" = "true" ]; then
+  ${IPTABLES} -t mangle -N XRAY_MASK 
+  ${IPTABLES} -t mangle -A XRAY_MASK -d 127.0.0.1/24 -j RETURN
+  ${IPTABLES} -t mangle -A XRAY_MASK -d 224.0.0.0/4 -j RETURN 
+  ${IPTABLES} -t mangle -A XRAY_MASK -d 255.255.255.255/32 -j RETURN 
+  ${IPTABLES} -t mangle -A XRAY_MASK -d ${LAN_SEGMENT:-172.100.0.0/24} -p tcp -j RETURN
+  ${IPTABLES} -t mangle -A XRAY_MASK -d ${LAN_SEGMENT:-172.100.0.0/24} -p udp ! --dport 53 -j RETURN 
+  ${IPTABLES} -t mangle -A XRAY_MASK -j RETURN -m mark --mark 0xff  
+  ${IPTABLES} -t mangle -A XRAY_MASK -p udp -j MARK --set-mark 1  
+  ${IPTABLES} -t mangle -A XRAY_MASK -p tcp -j MARK --set-mark 1  
+  ${IPTABLES} -t mangle -A OUTPUT -j XRAY_MASK 
+fi
 
 ${IPTABLES} -t mangle -N DIVERT
 ${IPTABLES} -t mangle -A DIVERT -j MARK --set-mark 1
