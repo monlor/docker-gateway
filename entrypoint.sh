@@ -1,7 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-source /gateway-common.sh
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+source "${SCRIPT_DIR}/gateway-common.sh"
 
 docker_gateway_require_socket
 
@@ -28,7 +29,11 @@ docker_gateway_log "Gateway attach network: ${DOCKER_GATEWAY_ATTACH_NETWORK}"
 docker_gateway_log "Gateway network IP: ${DOCKER_GATEWAY_IP}"
 docker_gateway_log "Gateway subnet: ${DOCKER_GATEWAY_SUBNET}"
 
-IPTABLES=${IPTABLES_COMMAND:-iptables-legacy}
+IPTABLES=$(docker_gateway_detect_iptables_command "${IPTABLES_COMMAND:-}") || {
+  docker_gateway_error "Unable to find a working iptables binary. Set IPTABLES_COMMAND to a valid command."
+  exit 1
+}
+export IPTABLES_COMMAND="${IPTABLES}"
 
 docker_gateway_log "Generating iptables rules."
 

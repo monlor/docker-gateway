@@ -14,7 +14,6 @@ This release is a breaking change. `GATEWAY_IP`, `RULE_TAG_*`, and `LAN_SEGMENT`
 docker run -d \
   --name docker-gateway \
   --label docker-gateway.name=main \
-  -e OUTBOUND_SERVER_HK=http,1.1.1.1:443:user1:pass1 \
   --privileged=true \
   --pid=host \
   -v /var/run/docker.sock:/var/run/docker.sock \
@@ -30,7 +29,6 @@ docker run -d \
   --network frontend \
   --label docker-gateway.name=main \
   --label docker-gateway.attach-network=frontend \
-  -e OUTBOUND_SERVER_HK=http,1.1.1.1:443:user1:pass1 \
   --privileged=true \
   --pid=host \
   -v /var/run/docker.sock:/var/run/docker.sock \
@@ -44,12 +42,15 @@ docker run -d \
 docker run -d \
   --name=nginx \
   --label docker-gateway.gateway=main \
-  --label docker-gateway.outbound=HK \
+  --label docker-gateway.allow-attach=true \
+  --label docker-gateway.proxy=socks,1.1.1.1:2222:user:pass \
+  --label docker-gateway.dns-servers=8.8.8.8 \
+  --label docker-gateway.dns-mode=direct \
   --restart=unless-stopped \
   nginx
 ```
 
-The app container no longer needs a gateway IP. The manager finds the gateway's IP automatically and connects the app container to the gateway network when needed.
+The app container no longer needs a gateway IP. The manager finds the gateway's IP automatically. If the app container is not already on the gateway network, add `docker-gateway.allow-attach=true` or set `AUTO_ATTACH_CONTAINERS=true` on the gateway container.
 
 ## Container Labels
 
@@ -59,7 +60,15 @@ The app container no longer needs a gateway IP. The manager finds the gateway's 
 
 `docker-gateway.gateway`: required on the app container; points to the target gateway logical name
 
-`docker-gateway.outbound`: optional on the app container; must match the suffix of an `OUTBOUND_SERVER_*` environment variable such as `HK`
+`docker-gateway.allow-attach`: optional on the app container; set to `true` to let the gateway connect the container to the managed bridge network on demand
+
+`docker-gateway.proxy`: optional on the app container
+`http` or `socks` format: `protocol,host:port[:user][:pass][,host:port[:user][:pass],...]`
+`shadowsocks` format: `shadowsocks,host:port:method:password[,host:port:method:password,...]`
+
+`docker-gateway.dns-servers`: optional on the app container; a single IPv4 DNS server address, for example `8.8.8.8`
+
+`docker-gateway.dns-mode`: optional on the app container; `direct` or `proxy`, defaults to `direct` when `docker-gateway.dns-servers` is set
 
 ## Environment
 
@@ -67,15 +76,15 @@ The app container no longer needs a gateway IP. The manager finds the gateway's 
 
 `SOCKS_PORT`: inbound socks port
 
-`OUTBOUND_SERVER_*`: List of egress proxy servers with tag *, format: `protocol,ip:port:(user|method):pass,...`, Supported protocols: shadowsocks/http/socks
-
-`RULE_DOMAIN`: Domain list appended to label-driven outbound rules (default none)
+`RULE_DOMAIN`: Domain list appended to proxy label-driven routing rules (default none)
 
 `PROXY_SERVER_TO_IP`: Resolve the proxy server domain as IP (default true)
 
-`NON_CN_DNS_OUT`: Non-Chinese dns server outbound tag (default direct)
+`AUTO_ATTACH_CONTAINERS`: Allow auto-attaching matching app containers to the managed bridge network without `docker-gateway.allow-attach=true` (default false)
 
-`CN_DNS_OUT`: Chinese dns server outbound tag (default direct)
+`STRICT_LABELS`: Fail a sync instead of silently ignoring invalid proxy or DNS labels (default false)
+
+`IPTABLES_COMMAND`: Override the iptables binary used by the gateway; if unset the gateway auto-detects `iptables`, `iptables-legacy`, then `iptables-nft`
 
 `CN_OUT`: Chinese ip and domain outbound tag (default direct)
 
@@ -83,12 +92,54 @@ The app container no longer needs a gateway IP. The manager finds the gateway's 
 
 `XRAY_API_PORT`: localhost Xray RoutingService port (default 10085)
 
-## Outbound Example
+## Runtime Requirements
 
-* Add HK's socks5 proxy and let app containers labeled with `docker-gateway.outbound=HK` use it
+The container image must ship an `xray` CLI that supports:
+
+* `RoutingService`
+* `HandlerService`
+* `xray api adrules`
+* `xray api rmrules`
+* `xray api ado`
+* `xray api rmo`
+
+The gateway manager also relies on:
+
+* `bash`
+* `jq`
+* `docker`
+* `ip`
+* `nsenter`
+* a working iptables binary (`iptables`, `iptables-legacy`, or `iptables-nft`)
+
+## Manager Modes
+
+The manager supports one-shot and agent-friendly inspection modes:
+
+* `/docker-gateway-manager.sh --sync-once`: run a single sync and print the latest sync report as JSON
+* `/docker-gateway-manager.sh --print-desired-state`: print the desired gateway state as JSON without mutating containers or Xray
+* `/docker-gateway-manager.sh --status`: print the last sync report as JSON
+
+## Label Examples
+
+* Route an app container through a socks5 proxy
 
 ```
-OUTBOUND_SERVER_HK=socks,1.1.1.1:2222:user:pass
+--label docker-gateway.proxy=socks,1.1.1.1:2222:user:pass
+```
+
+* Route an app container through a shadowsocks proxy and force DNS direct to `8.8.8.8`
+
+```bash
+docker run -d \
+  --name=nginx \
+  --label docker-gateway.gateway=main \
+  --label docker-gateway.allow-attach=true \
+  --label docker-gateway.proxy=shadowsocks,1.1.1.1:8388:aes-256-gcm:password \
+  --label docker-gateway.dns-servers=8.8.8.8 \
+  --label docker-gateway.dns-mode=direct \
+  --restart=unless-stopped \
+  nginx
 ```
 
 ## Migration
@@ -96,7 +147,10 @@ OUTBOUND_SERVER_HK=socks,1.1.1.1:2222:user:pass
 | Old | New |
 | --- | --- |
 | `GATEWAY_IP=172.100.0.2` | `--label docker-gateway.gateway=<gateway-name>` |
-| `RULE_TAG_HK=172.100.0.10/32` | `--label docker-gateway.outbound=HK` on the app container |
+| `OUTBOUND_SERVER_HK=socks,1.1.1.1:2222:user:pass` | `--label docker-gateway.proxy=socks,1.1.1.1:2222:user:pass` on the app container |
+| `RULE_TAG_HK=172.100.0.10/32` | Removed. Per-app routing now comes from `docker-gateway.proxy` |
+| `NON_CN_DNS_OUT` / `CN_DNS_OUT` | `--label docker-gateway.dns-servers=<ipv4>` plus `--label docker-gateway.dns-mode=direct|proxy` |
+| Implicit auto-attach to the gateway network | `--label docker-gateway.allow-attach=true` on the app container, or `AUTO_ATTACH_CONTAINERS=true` on the gateway |
 | Manual `docker network create ...` | Let Docker assign the gateway network, or set `docker-gateway.attach-network` when multiple bridge networks are attached |
 | Fixed `--ip` on gateway | Omit it; the manager discovers the gateway IP automatically |
 

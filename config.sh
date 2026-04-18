@@ -11,32 +11,9 @@ XRAY_API_PORT=${XRAY_API_PORT:-10085}
 mkdir -p "${XRAY_CONFIG_DIR}"
 
 jq -n \
-  --arg default_dns_out "${DEFAULT_DNS_OUT:-direct}" \
-  --arg non_cn_dns_out "${NON_CN_DNS_OUT:-direct}" \
-  --arg cn_dns_out "${CN_DNS_OUT:-direct}" \
   --arg cn_out "${CN_OUT:-direct}" \
   --arg ads_all_out "${ADS_ALL_OUT:-block}" \
   '[
-    {
-      ruleTag: "dns-inbound",
-      type: "field",
-      inboundTag: ["all-in", "socks-in"],
-      port: 53,
-      network: "udp",
-      outboundTag: $default_dns_out
-    },
-    {
-      ruleTag: "non-cn-dns",
-      type: "field",
-      ip: ["8.8.8.8", "1.1.1.1"],
-      outboundTag: $non_cn_dns_out
-    },
-    {
-      ruleTag: "cn-dns",
-      type: "field",
-      ip: ["119.29.29.29", "223.5.5.5"],
-      outboundTag: $cn_dns_out
-    },
     {
       ruleTag: "cn-domain",
       type: "field",
@@ -100,7 +77,7 @@ jq -n \
     api: {
       tag: "api",
       listen: $api_listen,
-      services: ["RoutingService"]
+      services: ["RoutingService", "HandlerService"]
     },
     routing: {
       domainMatcher: "mph",
@@ -203,87 +180,3 @@ jq -n \
       tag: "dns_inbound"
     }
   }' > "${XRAY_CONFIG_PATH}"
-
-while IFS= read -r var; do
-  [ -n "$var" ] || continue
-
-  tag=${var%%=*}
-  tag=${tag#OUTBOUND_SERVER_}
-  value=${var#*=}
-  protocol=${value%%,*}
-  servers=${value#*,}
-
-  IFS=',' read -ra SERVER_LIST <<<"${servers}"
-  server_array=()
-  outbound_type="servers"
-
-  for server in "${SERVER_LIST[@]}"; do
-    IFS=':' read -ra SERVER_INFO <<<"${server}"
-
-    if [[ ${#SERVER_INFO[@]} -lt 2 ]]; then
-      echo "Error: server information '${server}' is not correctly formatted."
-      continue
-    fi
-
-    address=${SERVER_INFO[0]}
-    port=${SERVER_INFO[1]}
-    user=${SERVER_INFO[2]:-}
-    pass=${SERVER_INFO[3]:-}
-
-    if ! [[ "${port}" =~ ^[0-9]+$ ]]; then
-      echo "Error: port '${port}' is not a valid number."
-      continue
-    fi
-
-    if [ "${PROXY_SERVER_TO_IP:-true}" = "true" ]; then
-      if [[ "${address}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        echo "${address} is a ip address"
-      else
-        ip=$(ping -4 -c 1 "${address}" | awk -F'[()]' '/PING/ {print $2}')
-        if [ -n "${ip}" ]; then
-          echo "nslookup ${address} to ${ip}"
-          address=${ip}
-        else
-          echo "can't resolve: ${address}"
-        fi
-      fi
-    fi
-
-    if [[ "${protocol}" == "http" || "${protocol}" == "socks" ]]; then
-      json_object="{\"address\":\"${address}\",\"port\":${port}"
-      if [ -n "${user}" ] && [ -n "${pass}" ]; then
-        json_object+=",\"users\":[{\"user\":\"${user}\",\"pass\":\"${pass}\"}]}"
-      else
-        json_object+="}"
-      fi
-      server_array+=("${json_object}")
-    elif [[ "${protocol}" == "shadowsocks" ]]; then
-      server_array+=("{
-        \"address\": \"${address}\",
-        \"port\": ${port},
-        \"method\": \"${user}\",
-        \"password\": \"${pass}\",
-        \"uot\": true,
-        \"UoTVersion\": 2,
-        \"level\": 0
-      }")
-    else
-      echo "Error: Unsupported protocol '${protocol}'."
-      continue
-    fi
-  done
-
-  jq ".outbounds += [{
-    \"tag\": \"${tag}\",
-    \"protocol\": \"${protocol}\",
-    \"settings\": {
-      \"${outbound_type}\": $(IFS=,; echo "[${server_array[*]}]")
-    },
-    \"streamSettings\": {
-      \"domainStrategy\": \"AsIs\",
-      \"sockopt\": {
-        \"mark\": 255
-      }
-    }
-  }]" "${XRAY_CONFIG_PATH}" > /tmp/config.json.tmp && mv /tmp/config.json.tmp "${XRAY_CONFIG_PATH}"
-done < <(env | grep '^OUTBOUND_SERVER_' || true)
