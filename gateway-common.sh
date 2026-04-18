@@ -126,7 +126,9 @@ docker_gateway_validate_unique_name() {
   gateway_name=$1
   self_container_id=$2
 
-  mapfile -t running_gateways < <(docker ps -q --filter "label=${DOCKER_GATEWAY_NAME_LABEL}=${gateway_name}")
+  # `docker inspect` returns the full container ID, so list running containers
+  # without truncation to avoid treating the current gateway as a duplicate.
+  mapfile -t running_gateways < <(docker ps -q --no-trunc --filter "label=${DOCKER_GATEWAY_NAME_LABEL}=${gateway_name}")
   for container_id in "${running_gateways[@]}"; do
     [ -n "$container_id" ] || continue
     if [ "$container_id" != "$self_container_id" ]; then

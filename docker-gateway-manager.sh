@@ -222,7 +222,7 @@ sync_gateway_state() {
     return 0
   fi
 
-  mapfile -t container_ids < <(docker ps -q | sort)
+  mapfile -t container_ids < <(docker ps -q --no-trunc | sort)
   for container_id in "${container_ids[@]}"; do
     [ -n "${container_id}" ] || continue
     [ "${container_id}" != "${self_container_id}" ] || continue
