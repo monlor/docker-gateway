@@ -6,21 +6,34 @@ The docker-gateway project implements a proxy server gateway on top of Docker. T
 
 ## Installation
 
+This release is a breaking change. `GATEWAY_IP`, `RULE_TAG_*`, and `LAN_SEGMENT` are removed.
+
 ### Init gateway
 
 ```
-# create network
-docker network create --subnet=172.100.0.0/24 gateway
-# run
 docker run -d \
   --name docker-gateway \
-  -e RULE_TAG_HK=172.100.0.12/32,1.1.1.1/32 \
+  --label docker-gateway.name=main \
   -e OUTBOUND_SERVER_HK=http,1.1.1.1:443:user1:pass1 \
   --privileged=true \
   --pid=host \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  --network=gateway \
-  --ip=172.100.0.2 \
+  --restart=unless-stopped \
+  ghcr.io/monlor/docker-gateway:main
+```
+
+If the gateway container is attached to multiple bridge networks, set `docker-gateway.attach-network` to choose the managed network:
+
+```bash
+docker run -d \
+  --name docker-gateway \
+  --network frontend \
+  --label docker-gateway.name=main \
+  --label docker-gateway.attach-network=frontend \
+  -e OUTBOUND_SERVER_HK=http,1.1.1.1:443:user1:pass1 \
+  --privileged=true \
+  --pid=host \
+  -v /var/run/docker.sock:/var/run/docker.sock \
   --restart=unless-stopped \
   ghcr.io/monlor/docker-gateway:main
 ```
@@ -30,23 +43,33 @@ docker run -d \
 ```bash
 docker run -d \
   --name=nginx \
-  --network gateway \
-  -e GATEWAY_IP=172.100.0.2 \
+  --label docker-gateway.gateway=main \
+  --label docker-gateway.outbound=HK \
   --restart=unless-stopped \
   nginx
 ```
 
-## Evironment
+The app container no longer needs a gateway IP. The manager finds the gateway's IP automatically and connects the app container to the gateway network when needed.
+
+## Container Labels
+
+`docker-gateway.name`: required on the gateway container; logical gateway name
+
+`docker-gateway.attach-network`: optional on the gateway container; required only when the gateway joins multiple bridge networks
+
+`docker-gateway.gateway`: required on the app container; points to the target gateway logical name
+
+`docker-gateway.outbound`: optional on the app container; must match the suffix of an `OUTBOUND_SERVER_*` environment variable such as `HK`
+
+## Environment
 
 `PORT`: transparent proxy port
 
 `SOCKS_PORT`: inbound socks port
 
-`RULE_TAG_*`: List of LAN IP addresses for the network egress to outbound tag *
-
 `OUTBOUND_SERVER_*`: List of egress proxy servers with tag *, format: `protocol,ip:port:(user|method):pass,...`, Supported protocols: shadowsocks/http/socks
 
-`RULE_DOMAIN`: Default proxy domain list (default none)
+`RULE_DOMAIN`: Domain list appended to label-driven outbound rules (default none)
 
 `PROXY_SERVER_TO_IP`: Resolve the proxy server domain as IP (default true)
 
@@ -58,16 +81,24 @@ docker run -d \
 
 `DEFAULT_OUT`: default outbound
 
-`LAN_SEGMENT`: lan network segment (default 172.100.0.0/24)
+`XRAY_API_PORT`: localhost Xray RoutingService port (default 10085)
 
-## Rule example
+## Outbound Example
 
-* Add HK's socks5 proxy so that containers with LAN ip 172.100.0.10 go through the HK proxy
+* Add HK's socks5 proxy and let app containers labeled with `docker-gateway.outbound=HK` use it
 
 ```
-RULE_TAG_HK=172.100.0.10/32
 OUTBOUND_SERVER_HK=socks,1.1.1.1:2222:user:pass
 ```
+
+## Migration
+
+| Old | New |
+| --- | --- |
+| `GATEWAY_IP=172.100.0.2` | `--label docker-gateway.gateway=<gateway-name>` |
+| `RULE_TAG_HK=172.100.0.10/32` | `--label docker-gateway.outbound=HK` on the app container |
+| Manual `docker network create ...` | Let Docker assign the gateway network, or set `docker-gateway.attach-network` when multiple bridge networks are attached |
+| Fixed `--ip` on gateway | Omit it; the manager discovers the gateway IP automatically |
 
 ## Sponsorship
 

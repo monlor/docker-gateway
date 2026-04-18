@@ -6,21 +6,34 @@ docker-gateway 项目在 Docker 之上实现了一个代理服务器网关。主
 
 ## 安装
 
+这个版本是破坏性变更，已经移除 `GATEWAY_IP`、`RULE_TAG_*` 和 `LAN_SEGMENT`。
+
 ### 初始化网关
 
 ```
-# 创建网络
-docker network create --subnet=172.100.0.0/24 gateway
-# 运行
 docker run -d \
   --name docker-gateway \
-  -e RULE_TAG_HK=172.100.0.12/32,1.1.1.1/32 \
+  --label docker-gateway.name=main \
   -e OUTBOUND_SERVER_HK=http,1.1.1.1:443:user1:pass1 \
   --privileged=true \
   --pid=host \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  --network=gateway \
-  --ip=172.100.0.2 \
+  --restart=unless-stopped \
+  ghcr.io/monlor/docker-gateway:main
+```
+
+如果网关容器加入了多个 bridge 网络，需要通过 `docker-gateway.attach-network` 指定管理哪个网络：
+
+```bash
+docker run -d \
+  --name docker-gateway \
+  --network frontend \
+  --label docker-gateway.name=main \
+  --label docker-gateway.attach-network=frontend \
+  -e OUTBOUND_SERVER_HK=http,1.1.1.1:443:user1:pass1 \
+  --privileged=true \
+  --pid=host \
+  -v /var/run/docker.sock:/var/run/docker.sock \
   --restart=unless-stopped \
   ghcr.io/monlor/docker-gateway:main
 ```
@@ -30,11 +43,23 @@ docker run -d \
 ```
 docker run -d \
   --name=nginx \
-  --network gateway \
-  -e GATEWAY_IP=172.100.0.2 \
+  --label docker-gateway.gateway=main \
+  --label docker-gateway.outbound=HK \
   --restart=unless-stopped \
   nginx
 ```
+
+应用容器不再需要配置网关 IP。manager 会自动识别 gateway 的 IP，并在需要时把应用容器接入 gateway 所在网络。
+
+## 容器 Label
+
+`docker-gateway.name`: 网关容器必填，表示逻辑网关名
+
+`docker-gateway.attach-network`: 网关容器可选；仅在网关加入多个 bridge 网络时需要指定
+
+`docker-gateway.gateway`: 应用容器必填，指向目标网关逻辑名
+
+`docker-gateway.outbound`: 应用容器可选；必须和某个 `OUTBOUND_SERVER_*` 的后缀完全一致，例如 `HK`
 
 ## 环境变量
 
@@ -42,11 +67,9 @@ docker run -d \
 
 `SOCKS_PORT`: 入站 Socks 端口
 
-`RULE_TAG_*`: 网络出口到出站标签为 * 的 LAN IP 地址列表
-
 `OUTBOUND_SERVER_*`: 创建标签 * 的出站代理服务器列表, 格式: `协议,ip:port:(user|method):pass,...`, 支持的协议: shadowsocks/http/socks
 
-`RULE_DOMAIN`: 默认走代理的域名列表 (默认 空)
+`RULE_DOMAIN`: 附加到 label 动态路由上的域名列表 (默认 空)
 
 `PROXY_SERVER_TO_IP`: 解析代理服务器域名为ip (默认 true)
 
@@ -58,16 +81,24 @@ docker run -d \
 
 `DEFAULT_OUT`: 默认出站tag
 
-`LAN_SEGMENT`: LAN 网络段(默认 172.100.0.0/24)
+`XRAY_API_PORT`: 本地 Xray RoutingService 端口 (默认 10085)
 
-## 规则示例
+## 出站示例
 
-* 添加HK的socks5代理，让局域网ip为172.100.0.10的容器走HK代理
+* 添加 HK 的 socks5 代理，让带有 `docker-gateway.outbound=HK` 的应用容器走 HK 出口
 
 ```
-RULE_TAG_HK=172.100.0.10/32
 OUTBOUND_SERVER_HK=socks,1.1.1.1:2222:user:pass
 ```
+
+## 迁移对照
+
+| 旧配置 | 新配置 |
+| --- | --- |
+| `GATEWAY_IP=172.100.0.2` | `--label docker-gateway.gateway=<gateway-name>` |
+| `RULE_TAG_HK=172.100.0.10/32` | 在应用容器上使用 `--label docker-gateway.outbound=HK` |
+| 手动 `docker network create ...` | 让 Docker 自动分配网关网络；如果有多个 bridge 网络，用 `docker-gateway.attach-network` 指定 |
+| 网关固定 `--ip` | 不再需要，manager 会自动识别 gateway IP |
 
 ## 赞助
 
