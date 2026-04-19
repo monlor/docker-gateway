@@ -60,7 +60,12 @@ JSON
 run_manage_container() {
   local stderr_file=$1
 
+  set +u
   manage_container container1234567890 frontend 172.18.0.1 plan 2>"${stderr_file}"
+  local exit_code=$?
+  set -u
+
+  return "${exit_code}"
 }
 
 warning_text="HTTP proxy outbound only carries TCP. Proxied DNS for demo (container123) may fail for normal UDP/53 queries."

@@ -38,7 +38,8 @@ export IPTABLES_COMMAND="${IPTABLES}"
 docker_gateway_log "Generating iptables rules."
 
 ip rule show | grep -q 'fwmark 0x1 lookup 100' || ip rule add fwmark 1 table 100
-ip route show table 100 | grep -q '^local 0.0.0.0/0 dev lo' || ip route add local 0.0.0.0/0 dev lo table 100
+table_100_routes=$(ip route show table 100 2>/dev/null || true)
+printf '%s\n' "${table_100_routes}" | grep -q '^local 0.0.0.0/0 dev lo' || ip route add local 0.0.0.0/0 dev lo table 100
 
 ${IPTABLES} -t mangle -N XRAY 2>/dev/null || true
 ${IPTABLES} -t mangle -F XRAY

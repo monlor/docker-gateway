@@ -367,9 +367,7 @@ sync_xray_routing() {
   mapfile -t current_rule_tags < <(read_current_rule_tags "${previous_state_json}")
   for rule_tag in "${current_rule_tags[@]}"; do
     [ -n "${rule_tag}" ] || continue
-    if [ "${rule_tag}" != "${XRAY_DEFAULT_RULE_TAG}" ]; then
-      removable_rule_tags+=("${rule_tag}")
-    fi
+    removable_rule_tags+=("${rule_tag}")
   done
 
   xray_remove_rules_by_tags "${removable_rule_tags[@]}"
@@ -382,6 +380,7 @@ sync_xray_routing() {
   docker_gateway_warn "Initial dynamic rule add failed. Retrying after clearing desired rule tags."
   desired_rule_tags_json=$(jq -nc --argjson rules "${desired_rules_json}" '$rules | map(.ruleTag)')
   mapfile -t desired_rule_tags < <(jq -r '.[]' <<<"${desired_rule_tags_json}")
+  desired_rule_tags+=("${XRAY_DEFAULT_RULE_TAG}")
   xray_remove_rules_by_tags "${desired_rule_tags[@]}"
 
   if xray_add_rules_from_json "${desired_rules_json}"; then
