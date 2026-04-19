@@ -13,15 +13,62 @@ DOCKER_GATEWAY_PROXY_FIELD_MAX_LENGTH=${DOCKER_GATEWAY_PROXY_FIELD_MAX_LENGTH:-2
 
 DOCKER_GATEWAY_RESOLVED_IPV4_CACHE=${DOCKER_GATEWAY_RESOLVED_IPV4_CACHE:-}
 
+docker_gateway_normalized_log_level() {
+  case "${LOG_LEVEL:-info}" in
+    debug|info|warning|error|none)
+      printf '%s\n' "${LOG_LEVEL:-info}"
+      ;;
+    warn)
+      printf 'warning\n'
+      ;;
+    *)
+      printf 'info\n'
+      ;;
+  esac
+}
+
+docker_gateway_should_log() {
+  local message_level=$1
+  local current_level
+
+  current_level=$(docker_gateway_normalized_log_level)
+
+  case "${current_level}" in
+    debug)
+      return 0
+      ;;
+    info)
+      [ "${message_level}" != "debug" ]
+      return $?
+      ;;
+    warning)
+      [ "${message_level}" = "warning" ] || [ "${message_level}" = "error" ]
+      return $?
+      ;;
+    error)
+      [ "${message_level}" = "error" ]
+      return $?
+      ;;
+    none)
+      return 1
+      ;;
+  esac
+
+  return 0
+}
+
 docker_gateway_log() {
+  docker_gateway_should_log info || return 0
   printf '[docker-gateway] %s\n' "$*" >&2
 }
 
 docker_gateway_warn() {
+  docker_gateway_should_log warning || return 0
   printf '[docker-gateway] WARN: %s\n' "$*" >&2
 }
 
 docker_gateway_error() {
+  docker_gateway_should_log error || return 0
   printf '[docker-gateway] ERROR: %s\n' "$*" >&2
 }
 

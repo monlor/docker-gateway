@@ -68,7 +68,7 @@ The app container no longer needs a gateway IP. The manager finds the gateway's 
 
 `docker-gateway.dns-servers`: optional on the app container; a single IPv4 DNS server address, for example `8.8.8.8`
 
-`docker-gateway.dns-mode`: optional on the app container; `direct` or `proxy`, defaults to `direct` when `docker-gateway.dns-servers` is set
+`docker-gateway.dns-mode`: optional on the app container; `direct` or `proxy`, defaults to `direct` when `docker-gateway.dns-servers` is set. When `proxy` is combined with an `http` proxy, the gateway logs a compatibility warning because regular UDP/53 DNS queries may fail through an HTTP outbound.
 
 ## Environment
 
@@ -85,6 +85,8 @@ The app container no longer needs a gateway IP. The manager finds the gateway's 
 `STRICT_LABELS`: Fail a sync instead of silently ignoring invalid proxy or DNS labels (default false)
 
 `IPTABLES_COMMAND`: Override the iptables binary used by the gateway; if unset the gateway auto-detects `iptables`, `iptables-legacy`, then `iptables-nft`
+
+`LOG_LEVEL`: Gateway and Xray log level. `info` keeps operational logs but disables per-request access logs and DNS query logs; `debug` enables verbose Xray access and DNS logs; `warning`, `error`, and `none` progressively reduce shell logs (default info)
 
 `CN_OUT`: Chinese ip and domain outbound tag (default direct)
 

@@ -571,6 +571,7 @@ manage_container() {
   local apply_mode=${4:-apply}
   local inspect_json labels_json container_name target_gateway network_mode
   local proxy_spec dns_server dns_mode allow_attach_label effective_dns_mode=""
+  local proxy_protocol="" dns_proxy_warning=""
   local proxy_payload_json outbound_json='null' outbound_tag=""
   local container_ip="" pid=0 status="managed"
   local auto_attach_allowed=false attached_to_gateway_network=false auto_attach_attempted=false
@@ -695,6 +696,7 @@ manage_container() {
 
   if [ -n "${proxy_spec}" ]; then
     if proxy_payload_json=$(docker_gateway_build_proxy_payload_json "${proxy_spec}"); then
+      proxy_protocol=$(jq -r '.protocol // empty' <<<"${proxy_payload_json}")
       if outbound_tag=$(docker_gateway_proxy_tag_from_payload "${proxy_payload_json}"); then
         outbound_json=$(docker_gateway_build_outbound_json "${outbound_tag}" "${proxy_payload_json}")
       else
@@ -754,6 +756,12 @@ manage_container() {
         docker_gateway_warn "DNS mode 'proxy' requires a valid proxy label for ${container_name} (${container_id:0:12}); falling back to 'direct'."
         effective_dns_mode=direct
       fi
+    fi
+
+    if [ "${effective_dns_mode}" = "proxy" ] && [ "${proxy_protocol}" = "http" ]; then
+      dns_proxy_warning="HTTP proxy outbound only carries TCP. Proxied DNS for ${container_name} (${container_id:0:12}) may fail for normal UDP/53 queries."
+      reasons+=("${dns_proxy_warning}")
+      docker_gateway_warn "${dns_proxy_warning}"
     fi
   fi
 

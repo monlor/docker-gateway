@@ -7,6 +7,26 @@ XRAY_CONFIG_PATH="${XRAY_CONFIG_DIR}/config.json"
 XRAY_STATIC_RULES_PATH="${XRAY_CONFIG_DIR}/static-routing-rules.json"
 XRAY_DEFAULT_RULE_PATH="${XRAY_CONFIG_DIR}/default-routing-rule.json"
 XRAY_API_PORT=${XRAY_API_PORT:-10085}
+XRAY_LOG_LEVEL=${LOG_LEVEL}
+XRAY_ACCESS_LOG=none
+XRAY_DNS_LOG=false
+
+case "${XRAY_LOG_LEVEL}" in
+  debug)
+    XRAY_ACCESS_LOG=""
+    XRAY_DNS_LOG=true
+    ;;
+  info)
+    ;;
+  warning|error|none)
+    ;;
+  warn)
+    XRAY_LOG_LEVEL=warning
+    ;;
+  *)
+    XRAY_LOG_LEVEL=info
+    ;;
+esac
 
 mkdir -p "${XRAY_CONFIG_DIR}"
 
@@ -64,7 +84,9 @@ jq -n \
   }' > "${XRAY_DEFAULT_RULE_PATH}"
 
 jq -n \
-  --arg log_level "${LOG_LEVEL}" \
+  --arg log_level "${XRAY_LOG_LEVEL}" \
+  --arg access_log "${XRAY_ACCESS_LOG}" \
+  --argjson dns_log "${XRAY_DNS_LOG}" \
   --arg api_listen "127.0.0.1:${XRAY_API_PORT}" \
   --arg transparent_port "${PORT:-12345}" \
   --arg socks_port "${SOCKS_PORT:-1080}" \
@@ -72,7 +94,9 @@ jq -n \
   --slurpfile default_rule "${XRAY_DEFAULT_RULE_PATH}" \
   '{
     log: {
-      loglevel: $log_level
+      loglevel: $log_level,
+      access: $access_log,
+      dnsLog: $dns_log
     },
     api: {
       tag: "api",

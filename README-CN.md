@@ -68,7 +68,7 @@ docker run -d \
 
 `docker-gateway.dns-servers`: 应用容器可选；单个 IPv4 DNS 服务器地址，例如 `8.8.8.8`
 
-`docker-gateway.dns-mode`: 应用容器可选；`direct` 或 `proxy`，当设置 `docker-gateway.dns-servers` 且未指定时默认 `direct`
+`docker-gateway.dns-mode`: 应用容器可选；`direct` 或 `proxy`，当设置 `docker-gateway.dns-servers` 且未指定时默认 `direct`。如果与 `http` 代理一起使用 `proxy`，gateway 会记录兼容性警告，因为普通 UDP/53 DNS 查询可能无法通过 HTTP 出站。
 
 ## 环境变量
 
@@ -85,6 +85,8 @@ docker run -d \
 `STRICT_LABELS`: 遇到非法代理或 DNS label 时直接让本次同步失败，而不是静默跳过 (默认 false)
 
 `IPTABLES_COMMAND`: 指定 gateway 使用的 iptables 二进制；如果不设置，会按 `iptables`、`iptables-legacy`、`iptables-nft` 的顺序自动探测
+
+`LOG_LEVEL`: Gateway 和 Xray 的日志级别。`info` 保留运维相关日志，但关闭逐请求 access log 和 DNS 查询日志；`debug` 打开更详细的 Xray access/DNS 日志；`warning`、`error`、`none` 会逐步减少 shell 日志输出 (默认 info)
 
 `CN_OUT`: 中国IP和域名出站tag (默认 direct)
 
